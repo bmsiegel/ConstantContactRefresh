@@ -56,12 +56,14 @@ def getClub(newMembers, clubCode):
 	return newMembers[newMembers['Club Nbr'] == clubCode].to_csv(index=False)
 
 if __name__ == '__main__':
-	print('Getting Email Attachments...')
-	attachmentExists = getAttachment()
+	print('Getting Newly Created Member Email Attachments...')
+	attachmentExists = getAttachment('Newly Created')
 	if not attachmentExists:
 		print('No New Members, Done!')
 		exit()
-	print('Attachments Saved...')
+	print('Attachment Saved...')
+
+
 	auth = getBasicAuth()
 	authData = {'Authorization' : 'Bearer {}'.format(auth)}
 	token = {'token' : auth}

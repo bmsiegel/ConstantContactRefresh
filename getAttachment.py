@@ -3,7 +3,7 @@ import base64
 import os
 import email
 
-def getAttachment():
+def getAttachment(keyword):
 	with open('credentials.txt', 'r') as cred:
 		lines = cred.read().splitlines()
 	
@@ -15,8 +15,8 @@ def getAttachment():
 	
 	mail.select('GMF')
 
-	try:	
-		type, data = mail.search(None, 'ALL')
+	try:
+		type, data = mail.search(None, 'SUBJECT', '"{}"'.format(keyword))
 		mail_ids = data[0]
 		id_list = mail_ids.split()
 		#get most recent email from GMF Label
@@ -25,18 +25,18 @@ def getAttachment():
 	except:
 		return False
 	
-	
 	for part in email.message_from_string(raw_email).walk():
 		if part.get_content_maintype() == 'multipart' or part.get('Content-Disposition') is None:
 			continue
 		fileName = part.get_filename()
-	
+
 		if fileName:
 			with open('member_export.csv', 'wb') as f:
 				f.write(part.get_payload(decode=True))
 				f.close()
 		else:
+			print('No Attachment in Email...')
 			return False
 	mail.store(mail_ids, '+FLAGS', '\\Deleted')
 	mail.expunge()
-	return True
+	return os.path.exists('member_export.csv')
