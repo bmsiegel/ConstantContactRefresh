@@ -56,14 +56,21 @@ def getClub(newMembers, clubCode):
 	return newMembers[newMembers['Club Nbr'] == clubCode].to_csv(index=False)
 
 if __name__ == '__main__':
-	print('Getting Newly Created Member Email Attachments...')
-	attachmentExists = getAttachment('Newly Created')
-	if not attachmentExists:
-		print('No New Members, Done!')
-		exit()
-	print('Attachment Saved...')
+
+	subjects = {
+			'Newly Created':'newly_created.csv',
+			'Member Transactions':'member_transactions.csv'
+		   }
 
 
+	for i in subjects:
+		print('Getting Email Attachment with the Subject Line {}...'.format(i))
+		attachmentExists = getAttachment(i, subjects[i])
+		if not attachmentExists:
+			print('No Attachments')
+		else:
+			print('Attachment Saved...')
+	
 	auth = getBasicAuth()
 	authData = {'Authorization' : 'Bearer {}'.format(auth)}
 	token = {'token' : auth}
@@ -83,7 +90,7 @@ if __name__ == '__main__':
 			listIDs['GMF'] = l['list_id']
 	
 	print('Splitting New Members into Different Clubs...')		
-	newMembers = pd.read_csv('member_export.csv')
+	newMembers = pd.read_csv(subjects['Newly Created'])
 	newWH = getClub(newMembers, 8656)
 	newBC = getClub(newMembers, 8655)
 	newGMF = getClub(newMembers, 8070)
@@ -105,6 +112,8 @@ if __name__ == '__main__':
 	r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=pJson)
 	time.sleep(1)
 	print('Done!')	
-#	editMembers = pd.read_csv('Member Transactions.csv')
 	
-	
+	editMembers = pd.read_csv('Member Transactions.csv')
+
+	os.remove(subjects['Newly Created'])
+	os.remove(subjects['Member Transactions'])

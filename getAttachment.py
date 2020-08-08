@@ -3,7 +3,7 @@ import base64
 import os
 import email
 
-def getAttachment(keyword):
+def getAttachment(keyword, outputFile):
 	with open('credentials.txt', 'r') as cred:
 		lines = cred.read().splitlines()
 	
@@ -31,7 +31,7 @@ def getAttachment(keyword):
 		fileName = part.get_filename()
 
 		if fileName:
-			with open('member_export.csv', 'wb') as f:
+			with open(outputFile, 'wb') as f:
 				f.write(part.get_payload(decode=True))
 				f.close()
 		else:
@@ -39,4 +39,4 @@ def getAttachment(keyword):
 			return False
 	mail.store(mail_ids, '+FLAGS', '\\Deleted')
 	mail.expunge()
-	return os.path.exists('member_export.csv')
+	return os.path.exists(outputFile)
