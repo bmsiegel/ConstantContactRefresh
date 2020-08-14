@@ -1,4 +1,5 @@
 import requests
+import os
 import base64
 import json
 import pandas as pd
@@ -64,6 +65,8 @@ if __name__ == '__main__':
 
 
 	for i in subjects:
+		if os.path.exists(subjects[i]):
+			os.remove(subjects[i])
 		print('Getting Email Attachment with the Subject Line {}...'.format(i))
 		attachmentExists = getAttachment(i, subjects[i])
 		if not attachmentExists:
