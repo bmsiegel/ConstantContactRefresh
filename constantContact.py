@@ -75,8 +75,6 @@ if __name__ == '__main__':
 		else:
 			print('Attachment Saved...')
 	
-	editMembers = pd.read_csv('Member Transactions.csv')
-
 	auth = getBasicAuth()
 	authData = {'Authorization' : 'Bearer {}'.format(auth)}
 	token = {'token' : auth}
