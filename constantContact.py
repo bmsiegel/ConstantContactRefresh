@@ -76,7 +76,12 @@ if __name__ == '__main__':
                         print('No Attachments')
                 else:
                         print('Attachment Saved...')
+                        goOn = True
         
+        if not goOn: 
+            print('No Member Updates, Done!')
+            exit()
+
         auth = getBasicAuth()
         authData = {'Authorization' : 'Bearer {}'.format(auth)}
         token = {'token' : auth}
