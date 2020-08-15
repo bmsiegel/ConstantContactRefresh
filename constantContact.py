@@ -26,7 +26,7 @@ def getBasicAuth():
                         f.write(d + '\n')
         return authResponse['access_token']
 
-def getJson(csv, lists):
+def getJsonNewlyCreated(csv, lists):
         csv = csv.splitlines()
         fieldCount = len(csv[0].split(','))
         csv = csv[1:]
@@ -53,14 +53,48 @@ def getJson(csv, lists):
                 result['import_data'].append(member)
         return result
 
-def getClub(newMembers, clubCode):
-        return newMembers[newMembers['Club Nbr'] == clubCode].to_csv(index=False)
+def getJsonMemberTransactions(csv, lists):
+        csv = csv.splitlines()
+        fieldCount = len(csv[0].split(','))
+        csv = csv[1:]
+        result = dict()
+        result['import_data'] = list()
+        result['list_ids'] = lists
+        for line in csv:
+            fields = line.split(',')
 
+            print(fields)
+
+            #Pass function to make this part
+            member = {'first_name' : fields[4].replace('\"', '').replace(' ', ''),
+                      'last_name' : fields[3].replace('\"', '').replace(' ', ''),
+                      'email' : fields[-1]
+                     }
+
+            result['import_data'].append(member)
+        return result
+
+def filterTable(table, column, target):
+        return table[table[column] == target]
+
+def filterToString(table, column, target):
+        return table[table[column] == target].to_csv(index=False)
+
+def bulkImport(authData, gmfJson, whJson, pJson, bcJson):
+        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=whJson)
+        time.sleep(1)
+        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=bcJson)
+        time.sleep(1)
+        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=gmfJson)
+        time.sleep(1)
+        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=pJson)
+        time.sleep(1)
+        
 if __name__ == '__main__':
 
         print('{}'.format(date.today()))
         
-        goOn = False
+        goOn = True 
 
         subjects = {
                         'Newly Created':'newly_created.csv',
@@ -102,29 +136,46 @@ if __name__ == '__main__':
         
         print('Splitting New Members into Different Clubs...')          
         newMembers = pd.read_csv(subjects['Newly Created'])
-        newWH = getClub(newMembers, 8656)
-        newBC = getClub(newMembers, 8655)
-        newGMF = getClub(newMembers, 8070)
-        newP = getClub(newMembers, 8653)
-        
+        newWH = filterToString(newMembers, 'Club Nbr', 8656)
+        newBC = filterToString(newMembers, 'Club Nbr', 8655)
+        newGMF = filterToString(newMembers, 'Club Nbr', 8070)
+        newP = filterToString(newMembers, 'Club Nbr', 8653)
+
         print('Getting JSON Data...')
-        whJson = getJson(newWH, [listIDs['WH']])
-        bcJson = getJson(newBC, [listIDs['BC']])
-        gmfJson = getJson(newGMF, [listIDs['GMF']])
-        pJson = getJson(newP, [listIDs['P']])
+        whJson = getJsonNewlyCreated(newWH, [listIDs['WH']])
+        print(json.dumps(whJson, indent=2))
+        bcJson = getJsonNewlyCreated(newBC, [listIDs['BC']])
+        print(json.dumps(bcJson, indent=2))
+        gmfJson = getJsonNewlyCreated(newGMF, [listIDs['GMF']])
+        print(json.dumps(gmfJson, indent=2))
+        pJson = getJsonNewlyCreated(newP, [listIDs['P']])
+        print(json.dumps(pJson, indent=2))
         
         print('Sending New Members to CC...')
-        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=whJson)
-        time.sleep(1)
-        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=bcJson)
-        time.sleep(1)
-        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=gmfJson)
-        time.sleep(1)
-        r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=pJson)
-        time.sleep(1)
-        print('Done!')  
+        bulkImport(authData, gmfJson, whJson, pJson, bcJson)
         
-        editMembers = pd.read_csv('Member Transactions.csv')
+        editMembers = pd.read_csv(subjects['Member Transactions'])
+        print('Filtering Demographic Changes...')
+        editMembers = filterTable(editMembers, 'Change Type', 'Update Demographics')
+        print('Getting Member Transactions into Different Clubs...')
+        editWH = filterToString(editMembers, 'Club Nbr', 8656)
+        editBC = filterToString(editMembers, 'Club Nbr', 8655)
+        editGMF = filterToString(editMembers, 'Club Nbr', 8070)
+        editP = filterToString(editMembers, 'Club Nbr', 8653)
 
-        os.remove(subjects['Newly Created'])
-        os.remove(subjects['Member Transactions'])
+        print('Getting JSON Data...')
+        whJson = getJsonMemberTransactions(editWH, [listIDs['WH']])
+        print(json.dumps(whJson, indent=2))
+        bcJson = getJsonMemberTransactions(editBC, [listIDs['BC']])
+        print(json.dumps(bcJson, indent=2))
+        gmfJson = getJsonMemberTransactions(editGMF, [listIDs['GMF']])
+        print(json.dumps(gmfJson, indent=2))
+        pJson = getJsonMemberTransactions(editP, [listIDs['P']])
+        print(json.dumps(pJson, indent=2))
+
+        print('Sending Transactions to CC...')
+        bulkImport(authData, gmfJson, whJson, pJson, bcJson)
+        print('Done!')
+
+        #os.remove(subjects['Newly Created'])
+        #os.remove(subjects['Member Transactions'])
