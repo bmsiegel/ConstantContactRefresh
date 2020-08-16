@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
         print('{}'.format(date.today()))
         
-        goOn = True 
+        goOn = False 
 
         subjects = {
                         'Newly Created':'newly_created.csv',
