@@ -26,52 +26,44 @@ def getBasicAuth():
                         f.write(d + '\n')
         return authResponse['access_token']
 
-def getJsonNewlyCreated(csv, lists):
-        csv = csv.splitlines()
-        fieldCount = len(csv[0].split(','))
-        csv = csv[1:]
+def getNewlyCreatedJSON(row):
+        try:
+            birthDate = datetime.strptime(row['Birth Date'], '%m/%d/%Y')
+        except:
+            birthDate = None
+
+        member = {
+                  'email' : row['Email'],
+                  'first_name' : row['Member Name (first)'],
+                  'last_name' : row['Member Name (last)'],
+                  'birthday_month' : birthDate.month if birthDate else '', #getMonth
+                  'birthday_day' : birthDate.day if birthDate else '', #getDay
+                  'company_name' : row['Club Name'],
+                  'home_phone' : row['Cell Phone'] if row['Cell Phone'] != '' else row['Primary Phone']
+                 }
+
+        return member
+
+def getMemberTransactionJSON(row):
+    name = row['Member Name (last, first)']
+    nameSplit = name.split(', ')
+    lastName = nameSplit[0]
+    firstName = nameSplit[1].split(' ')[0]
+    email = row['Email']
+    return {
+            'email':email,
+            'first_name':firstName,
+            'last_name':lastName
+           }
+
+def getJson(csv, lists, jsonFunc):
         result = dict()
         result['import_data'] = list()
         result['list_ids'] = lists
-        for line in csv:
-                fields = line.split(',')
-                if len(fields) != fieldCount:
-                        print('{} is malformed, please check input data'.format(line))
-                        continue
-                try:
-                        birthDate = datetime.strptime(fields[13], '%m/%d/%Y')
-                except:
-                        birthDate = None
-
-                member = {'email' : fields[11],
-                          'first_name' : fields[2],
-                          'last_name' : fields[1],
-                          'birthday_month' : birthDate.month if birthDate else '', #getMonth
-                          'birthday_day' : birthDate.day if birthDate else '', #getDay
-                          'company_name' : fields[4],
-                          'home_phone' : fields[10] if fields[10] != '' else fields[9]}
-                result['import_data'].append(member)
-        return result
-
-def getJsonMemberTransactions(csv, lists):
-        csv = csv.splitlines()
-        fieldCount = len(csv[0].split(','))
-        csv = csv[1:]
-        result = dict()
-        result['import_data'] = list()
-        result['list_ids'] = lists
-        for line in csv:
-            fields = line.split(',')
-
-            print(fields)
-
-            #Pass function to make this part
-            member = {'first_name' : fields[4].replace('\"', '').replace(' ', ''),
-                      'last_name' : fields[3].replace('\"', '').replace(' ', ''),
-                      'email' : fields[-1]
-                     }
-
-            result['import_data'].append(member)
+        csv = csv.apply(jsonFunc, axis=1)
+        if isinstance(csv, pd.core.series.Series):
+            for val in csv:
+                result['import_data'].append(val)
         return result
 
 def filterTable(table, column, target):
@@ -82,12 +74,20 @@ def filterToString(table, column, target):
 
 def bulkImport(authData, gmfJson, whJson, pJson, bcJson):
         r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=whJson)
+        if r.status_code != 200:
+            print('Push Failed: {}'.format(r.content))
         time.sleep(1)
         r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=bcJson)
+        if r.status_code != 200:
+            print('Push Failed: {}'.format(r.content))
         time.sleep(1)
         r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=gmfJson)
+        if r.status_code != 200:
+            print('Push Failed: {}'.format(r.content))
         time.sleep(1)
         r = requests.post('https://api.cc.email/v3/activities/contacts_json_import', headers=authData, json=pJson)
+        if r.status_code != 200:
+            print('Push Failed: {}'.format(r.content))
         time.sleep(1)
         
 if __name__ == '__main__':
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
         for i in subjects:
                 if os.path.exists(subjects[i]):
-                        os.remove(subjects[i])
+                       os.remove(subjects[i])
                 print('Getting Email Attachment with the Subject Line {}...'.format(i))
                 attachmentExists = getAttachment(i, subjects[i])
                 if not attachmentExists:
@@ -136,19 +136,19 @@ if __name__ == '__main__':
         
         print('Splitting New Members into Different Clubs...')          
         newMembers = pd.read_csv(subjects['Newly Created'])
-        newWH = filterToString(newMembers, 'Club Nbr', 8656)
-        newBC = filterToString(newMembers, 'Club Nbr', 8655)
-        newGMF = filterToString(newMembers, 'Club Nbr', 8070)
-        newP = filterToString(newMembers, 'Club Nbr', 8653)
+        newWH = filterTable(newMembers, 'Club Nbr', 8656)
+        newBC = filterTable(newMembers, 'Club Nbr', 8655)
+        newGMF = filterTable(newMembers, 'Club Nbr', 8070)
+        newP = filterTable(newMembers, 'Club Nbr', 8653)
 
         print('Getting JSON Data...')
-        whJson = getJsonNewlyCreated(newWH, [listIDs['WH']])
+        whJson = getJson(newWH, [listIDs['WH']], getNewlyCreatedJSON)
         print(json.dumps(whJson, indent=2))
-        bcJson = getJsonNewlyCreated(newBC, [listIDs['BC']])
+        bcJson = getJson(newBC, [listIDs['BC']], getNewlyCreatedJSON)
         print(json.dumps(bcJson, indent=2))
-        gmfJson = getJsonNewlyCreated(newGMF, [listIDs['GMF']])
+        gmfJson = getJson(newGMF, [listIDs['GMF']], getNewlyCreatedJSON)
         print(json.dumps(gmfJson, indent=2))
-        pJson = getJsonNewlyCreated(newP, [listIDs['P']])
+        pJson = getJson(newP, [listIDs['P']], getNewlyCreatedJSON)
         print(json.dumps(pJson, indent=2))
         
         print('Sending New Members to CC...')
@@ -158,19 +158,19 @@ if __name__ == '__main__':
         print('Filtering Demographic Changes...')
         editMembers = filterTable(editMembers, 'Change Type', 'Update Demographics')
         print('Getting Member Transactions into Different Clubs...')
-        editWH = filterToString(editMembers, 'Club Nbr', 8656)
-        editBC = filterToString(editMembers, 'Club Nbr', 8655)
-        editGMF = filterToString(editMembers, 'Club Nbr', 8070)
-        editP = filterToString(editMembers, 'Club Nbr', 8653)
+        editWH = filterTable(editMembers, 'Club Nbr', 8656)
+        editBC = filterTable(editMembers, 'Club Nbr', 8655)
+        editGMF = filterTable(editMembers, 'Club Nbr', 8070)
+        editP = filterTable(editMembers, 'Club Nbr', 8653)
 
         print('Getting JSON Data...')
-        whJson = getJsonMemberTransactions(editWH, [listIDs['WH']])
+        whJson = getJson(editWH, [listIDs['WH']], getMemberTransactionJSON)
         print(json.dumps(whJson, indent=2))
-        bcJson = getJsonMemberTransactions(editBC, [listIDs['BC']])
+        bcJson = getJson(editBC, [listIDs['BC']], getMemberTransactionJSON)
         print(json.dumps(bcJson, indent=2))
-        gmfJson = getJsonMemberTransactions(editGMF, [listIDs['GMF']])
+        gmfJson = getJson(editGMF, [listIDs['GMF']], getMemberTransactionJSON)
         print(json.dumps(gmfJson, indent=2))
-        pJson = getJsonMemberTransactions(editP, [listIDs['P']])
+        pJson = getJson(editP, [listIDs['P']], getMemberTransactionJSON)
         print(json.dumps(pJson, indent=2))
 
         print('Sending Transactions to CC...')
