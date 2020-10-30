@@ -37,6 +37,6 @@ def getAttachment(keyword, outputFile):
 		else:
 			print('No Attachment in Email...')
 			return False
-	#mail.store(mail_ids, '+FLAGS', '\\Deleted')
-	#mail.expunge()
+	mail.store(mail_ids, '+FLAGS', '\\Deleted')
+	mail.expunge()
 	return os.path.exists(outputFile)
