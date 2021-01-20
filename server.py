@@ -2,11 +2,15 @@ from flask import Flask
 from flask import request
 import requests
 import base64
+import sys
 app = Flask(__name__)
 
-cid = 'd1a5eea5-8a33-4fe6-a07a-7085de6406f1'
-csec = 'MoqW9miVTR-V-60Bk9uGrA'
-
+with open(sys.argv[1], 'r') as f:
+	data = f.read().splitlines()
+	cid = data[2]
+	csec = data[3]
+	print(cid, csec)
+	
 @app.route('/')
 def a():
 	code = request.args.get('code')
