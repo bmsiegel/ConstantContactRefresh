@@ -37,9 +37,13 @@ def getNewlyCreatedJSON(row):
         birthDate = datetime.strptime(row['Birth Date'], '%m/%d/%Y')
     except:
         birthDate = None
+    
+    if pd.isnull(row['Email']):
+        with open('bad.txt', 'a') as f:
+            f.write('{} {}\n'.format(row['Member Name (first)'], row['Member Name (last)']))
 
     member = {
-        'email': row['Email'],
+        'email': 'no_email_{}@fail.com'.format(time.time()) if pd.isnull(row['Email']) else row['Email'],
         'first_name': row['Member Name (first)'],
         'last_name': row['Member Name (last)'],
         'birthday_month': birthDate.month if birthDate else '',  # getMonth
